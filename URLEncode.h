@@ -25,10 +25,11 @@ private:
 	static int m_iReservedLen;
 
 	CString toHex(BYTE val);
-	WORD toUTF8(TCHAR tc);
-	TCHAR fromUTF8(WORD w);
+	//WORD toUTF8(TCHAR tc);
+	//TCHAR fromUTF8(WORD w);
 
 public:
-	CString Encode(CString strURL, BOOL bEncodeReserved=FALSE);
-	CString Decode(CString strURL);
+	//CString Encode(CString strURL, BOOL bEncodeReserved=FALSE);
+	//CString Decode(CString strURL);
+	CString URLEncode(const CString& str);
 };

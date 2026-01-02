@@ -66,7 +66,8 @@ bool oneTouchSearch(const wchar_t* search_engine_url) {
 
 			// Encode the URL
 			CURLEncode cEncoder;
-			CString clipTextURL = cEncoder.Encode(clipText);
+			//CString clipTextURL = cEncoder.Encode(clipText);
+			CString clipTextURL = cEncoder.URLEncode(clipText);
 
 			// Prepends the query URL
 			CString finalURL;
