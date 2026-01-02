@@ -1,32 +1,47 @@
-# Prerequisites
-*.d
+# Visual Studio 2026 C++ 用 .gitignore
+## ビルド成果物
+**/Debug/
+**/Release/
+**/x64/
+**/x86/
+**/[Bb]in/
+**/[Oo]bj/
+*.exe
+*.dll
+*.pdb
+*.lib
+*.ilk
+*.exp
+*.manifest
+*.iobj
 
-# Compiled Object files
-*.slo
-*.lo
-*.o
-*.obj
+## Visual Studio 設定
+.vs/
+*.vcxproj.user
+*.sln.iml
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
 
-# Precompiled Headers
-*.gch
+## NuGet
+**/[Pp]ackages/*
+!**/[Pp]ackages/build/
+
+## ログ・一時ファイル
+*.log
+*.cache
+Thumbs.db
+.DS_Store
+
+## インテリセンス
+*.iobj
+*.ipch
 *.pch
 
-# Compiled Dynamic libraries
-*.so
-*.dylib
-*.dll
+## Qt（使用する場合）
+moc_*.cpp
+moc_*.h
+qrc_*.cpp
+ui_*.h
 
-# Fortran module files
-*.mod
-*.smod
-
-# Compiled Static libraries
-*.lai
-*.la
-*.a
-*.lib
-
-# Executables
-*.exe
-*.out
-*.app
