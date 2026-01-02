@@ -2,7 +2,7 @@
 Original project: https://github.com/original-author/repo
 License: GPLv3
 
-# OneTouchSearch
+# OneTouchSearch(Shift-JIS compatible version)
 A Windows tray icon program that emulates the *One Touch Search* feature of the old Logitech mice with SetPoint.
 When it is running and the user presses the default hotkey <kbd>CTRL</kbd>+<kbd>ALT</kbd>+<kbd>SHIFT</kbd>+<kbd>K</kbd> the currently selected text (in any application) is used to launch a search with the default browser.
 
