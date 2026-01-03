@@ -77,7 +77,7 @@ void g_TrayIconOTS_OnMessage(CTrayIcon* pTrayIcon, UINT uMsg)
 						// About
 						CStringW appVer;
 						std::wstring aboutMessage;
-						aboutMessage.append(_T("One Touch Search(Shift-JIS compatible)"));
+						aboutMessage.append(_T("One Touch Search(UTF-16 support)"));
 						if (GetAppVersion(appVer)) {
 							aboutMessage.append(_T(" v"));
 							aboutMessage.append(appVer);
