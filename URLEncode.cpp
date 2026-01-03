@@ -9,247 +9,66 @@
 #include "stdafx.h"
 #include "URLEncode.h"
 
-// Put the percent (%) sign first, so it won't overwrite the converted Hex'es
-LPCTSTR CURLEncode::m_lpszUnsafeString=_T(" \"<>#{}|\\^~[]`");
-int CURLEncode::m_iUnsafeLen=(int)_tcslen(m_lpszUnsafeString);
-LPCTSTR CURLEncode::m_lpszReservedString=_T("$&+,./:;=?@-_!*()'");
-int CURLEncode::m_iReservedLen=(int)_tcslen(m_lpszReservedString);
-
-// Convert a byte into Hexadecimal CString
-CString CURLEncode::toHex(BYTE val) 
-{
-	CString csRet;
-	csRet.Format(_T("%%%0.2X"), val);
-	return csRet;
-}
-
-//// Convert a Unicode or ANSI character into UTF8
-//WORD CURLEncode::toUTF8(TCHAR tc)
-//{
-//	WCHAR wc[2];
-//	CHAR mb[3];
-//
-//	// If application character set is ANSI,
-//	// we need to convert to Unicode first
-//	if (sizeof(TCHAR)==1)
-//	{
-//		mb[0]=(CHAR)tc;
-//		mb[1]=0;
-//		MultiByteToWideChar(URLENCODE_DEFAULT_ANSI_CODEPAGE, 0, mb, 3, wc, 2);
-//	}
-//
-//	if (sizeof(TCHAR)>1) wc[0]=tc;
-//	wc[1]=0;
-//	mb[0]=0;
-//	WideCharToMultiByte(CP_UTF8, 0, wc, 2, mb, 3, 0, 0);
-//	return MAKEWORD(mb[1], mb[0]);
-//}
-
-//// Convert a UTF8 character into Unicode or ANSI
-//TCHAR CURLEncode::fromUTF8(WORD w)
-//{
-//	WCHAR wc[2];
-//	CHAR mb[3];
-//
-//	mb[0]=HIBYTE(w);
-//	mb[1]=LOBYTE(w);
-//	mb[2]=0;
-//	wc[0]=0;
-//
-//	MultiByteToWideChar(CP_UTF8, 0, mb, 3, wc, 2);
-//	if (sizeof(TCHAR)==1)
-//	{
-//		mb[0]=0;
-//		WideCharToMultiByte(URLENCODE_DEFAULT_ANSI_CODEPAGE, 0, wc, 2, mb, 3, 0, 0);
-//		return mb[0];
-//	} else {
-//		return (TCHAR)wc[0];
-//	}
-//}
-
-// strURL:			URL to encode.
-// bEncodeReserved: Encode the reserved characters
-//                  for example the ? character, which is used many times
-//                  for arguments in URL.
-//                  so if we are encoding just a string containing Keywords,
-//                  we want to encode the reserved characters.
-//                  but if we are encoding a simple URL, we wont.
-//CString CURLEncode::Encode(CString strURL, BOOL bEncodeReserved/*=FALSE*/)
-//{
-//	// First encode the % sign, because we are adding lots of it later...
-//	strURL.Replace(_T("%"), toHex(__toascii(_T('%'))));
-//
-//
-//	// Encdoe the reserved characters, if we choose to
-//	if (bEncodeReserved)
-//	{
-//		for (int i=0; i<m_iReservedLen; i++)
-//		{
-//			strURL.Replace(CString(m_lpszReservedString[i]), toHex(__toascii(m_lpszReservedString[i])));
-//		}
-//	}
-//
-//	// Encode 'unsafe' characters
-//	// see: http://www.blooberry.com/indexdot/html/topics/urlencoding.htm
-//	for (int i=0; i<m_iUnsafeLen; i++)
-//	{
-//		strURL.Replace(CString(m_lpszUnsafeString[i]), toHex(__toascii(m_lpszUnsafeString[i])));
-//	}
-//
-//	// Encode unprintable characters 0x00-0x1F, and 0x7F
-//	for (char c=0x00; c<=0x1F; c++)
-//	{
-//		strURL.Replace(CString(c), toHex(c));
-//	}
-//	strURL.Replace(CString((char)0x7F), toHex(0x7F));
-//
-//	// Now encode all other unsafe characters
-//	TCHAR tc=0;
-//	WORD w=0;
-//
-//	CString nc;
-//	// In this stage we do not want to convert:
-//	// 1. Characters A-Z, a-z, 0-9, because they are safe.
-//	// 2. The reserved characteres, we have already dealt with them;
-//	// 3. The % character...
-//	CString strDoNotReplace(m_lpszReservedString);
-//	strDoNotReplace.Append(_T("%"));
-//
-//	for (int i=0; i<strURL.GetLength(); i++)
-//	{
-//		tc=strURL.GetAt(i);
-//		if ((tc<_T('a') || tc>_T('z')) && 
-//			(tc<_T('A') || tc>_T('Z')) &&
-//			(tc<_T('0') || tc>_T('9')) &&
-//			strDoNotReplace.Find(tc)<0)
-//		{
-//			w=toUTF8(tc);
-//			nc=toHex(HIBYTE(w));
-//			nc.Append(toHex(LOBYTE(w)));
-//			strURL.Replace(CString(tc), nc);
-//			// We have added 5 extra characters to the length of the string,
-//			// So we can ignore them.
-//			i+=5;
-//		}
-//	}
-//
-//	return strURL;
-//}
-
 CString CURLEncode::URLEncode(const CString& str)
 {
-	CString result;
-	UINT ansiCP = GetACP();  // 932 (Shift-JIS)
+    CString result;
+    UINT ansiCP = GetACP();  // TCHARがcharの場合のために保持
 
-	for (int i = 0; i < str.GetLength(); ++i) {
-		WCHAR wc;
+    for (int i = 0; i < str.GetLength(); ++i) {
+        WCHAR wc;
 
-		// TCHAR → Unicode 変換
-		if (sizeof(TCHAR) == 1) {
-			CHAR mb[3] = { (CHAR)str[i], 0 };
-			MultiByteToWideChar(ansiCP, 0, mb, -1, &wc, 1);
-		}
-		else {
-			wc = str[i];
-		}
+        // TCHAR → UTF-16 (WCHAR)
+        if (sizeof(TCHAR) == 1) {
+            CHAR mb[2] = { (CHAR)str[i], 0 };
+            MultiByteToWideChar(ansiCP, 0, mb, -1, &wc, 1);
+        }
+        else {
+            wc = str[i];
+        }
 
-		// Unicode → Shift-JIS バイト列 → %エンコード
-		CHAR sjisBytes[3] = { 0 };
-		int byteLen = WideCharToMultiByte(ansiCP, 0, &wc, 1, sjisBytes, 3, NULL, NULL);
+        // サロゲートペアなら2ユニットまとめて処理
+        WCHAR utf16[3] = { 0 };
+        int utf16Len = 1;
+        utf16[0] = wc;
 
-		for (int j = 0; j < byteLen; ++j) {
-			BYTE b = (BYTE)sjisBytes[j];
+        if (i + 1 < str.GetLength()) {
+            WCHAR low = str[i + 1];
+            if (wc >= 0xD800 && wc <= 0xDBFF && low >= 0xDC00 && low <= 0xDFFF) {
+                utf16[1] = low;
+                utf16Len = 2;
+                ++i;  // 低位サロゲートも消費
+            }
+        }
 
-			// 安全文字判定
-			if ((b >= 'A' && b <= 'Z') || (b >= 'a' && b <= 'z') ||
-				(b >= '0' && b <= '9') || b == '-' || b == '_' ||
-				b == '.' || b == '~') {
-				result += (TCHAR)b;
-			}
-			else {
-				CString hex;
-				hex.Format(_T("%%%02X"), b);
-				result += hex;
-			}
-		}
-	}
-	return result;
+        // UTF-16 → UTF-8
+        CHAR utf8[8] = { 0 };  // 4バイト文字 + NULL で十分
+        int byteLen = WideCharToMultiByte(
+            CP_UTF8,
+            0,
+            utf16,
+            utf16Len,
+            utf8,
+            sizeof(utf8),
+            NULL,
+            NULL
+        );
+
+        for (int j = 0; j < byteLen; ++j) {
+            BYTE b = (BYTE)utf8[j];
+
+            // 安全文字はそのまま（RFC 3986）
+            if ((b >= 'A' && b <= 'Z') || (b >= 'a' && b <= 'z') ||
+                (b >= '0' && b <= '9') || b == '-' || b == '_' ||
+                b == '.' || b == '~') {
+                result += (TCHAR)b;
+            }
+            else {
+                CString hex;
+                hex.Format(_T("%%%02X"), b);
+                result += hex;
+            }
+        }
+    }
+
+    return result;
 }
-
-
-#define isHex(c) (((c)>=_T('A') && (c)<=_T('F')) || \
-				 ((c)>=_T('a') && (c)<=_T('f')) || \
-				 ((c)>=_T('0') && (c)<=_T('9')))
-#define hexToDec2(c) (((c)>=_T('A') && (c)<=_T('F')) ? c-_T('A')+10 : \
-					(((c)>=_T('a') && (c)<=_T('f')) ? c-_T('a')+10 : c-_T('0')))
-
-#define hexToDec(high, low) (hexToDec2(high)<<4 | hexToDec2(low))
-
-// strURL: URL to decode.
-//CString CURLEncode::Decode(CString strURL)
-//{
-//	int i=strURL.Find(_T('%'));
-//	TCHAR tc1=0, tc2=0;
-//	BYTE b=0;
-//	BOOL bFound=FALSE;
-//	while (i>-1)
-//	{
-//		tc1=strURL.GetAt(i+1);
-//		tc2=strURL.GetAt(i+2);
-//
-//		if (isHex(tc1) && isHex(tc2))
-//		{
-//			b=hexToDec(tc1, tc2);
-//
-//			// first deal with 1-byte unprintable characters
-//			if (b<0x1F || b==0x7F) {
-//				strURL.SetAt(i, b);
-//				strURL.Delete(i+1, 2);
-//			} else {
-//				// Then deal with 1-byte unsafe/reserved characters
-//				// We are reading for those static LPCTSTR strings,
-//				// so we have nice support for Unicode
-//				bFound=FALSE;
-//				for (int ii=0; ii<m_iUnsafeLen && !bFound; ii++)
-//				{
-//					if (__toascii(m_lpszUnsafeString[ii])==b)
-//					{
-//						strURL.SetAt(i, m_lpszUnsafeString[ii]);
-//						strURL.Delete(i+1, 2);
-//						bFound=TRUE;
-//					}
-//				}
-//				for (int ii=0; ii<m_iReservedLen && !bFound; ii++)
-//				{
-//					if (__toascii(m_lpszReservedString[ii])==b)
-//					{
-//						strURL.SetAt(i, m_lpszReservedString[ii]);
-//						strURL.Delete(i+1, 2);
-//						bFound=TRUE;
-//					}
-//				}
-//				// Then deal with UTF-8 (2-bytes) characters
-//				if (!bFound)
-//				{
-//					// We need to have 2 bytes for decoding
-//					if (strURL.GetAt(i+3)==_T('%'))
-//					{
-//						tc1=strURL.GetAt(i+4);
-//						tc2=strURL.GetAt(i+5);
-//
-//						if (isHex(tc1) && isHex(tc2))
-//						{
-//							BYTE b2=hexToDec(tc1, tc2);
-//							strURL.SetAt(i, fromUTF8(MAKEWORD(b2, b)));
-//							strURL.Delete(i+1, 5);
-//						}
-//					}
-//				}
-//			}
-//		}
-//
-//		i=strURL.Find(_T('%'), i+1);
-//	}
-//
-//	return strURL;
-//}

@@ -4,21 +4,28 @@
 #include "URLEncode.h"
 
 CStringW getClipboard() {
-	// Return clipboard text in Unicode format
-	CStringW strData;
+    // Return clipboard text in Unicode format
+    CStringW strData;
 
-	if (OpenClipboard(NULL)) {
-		HANDLE hData = GetClipboardData(CF_UNICODETEXT);
-		if (hData) {
-			WCHAR *pchData = (WCHAR*) GlobalLock(hData);
-			if (pchData) {
-				strData = pchData;
-				GlobalUnlock(hData);
+	for (int retry = 0; retry < 3; ++retry) {
+		Sleep(50 + retry * 50);  // 50Å®100Å®150ms
+
+		if (OpenClipboard(NULL)) {
+			HANDLE hData = GetClipboardData(CF_UNICODETEXT);
+			if (hData) {
+				WCHAR* pchData = (WCHAR*)GlobalLock(hData);
+				if (pchData) {
+					strData = pchData;
+					GlobalUnlock(hData);
+				}
 			}
+			CloseClipboard();
 		}
-		CloseClipboard();
+		if (strData.Trim().GetLength() > 0) {
+			break;  // ê¨å˜
+		}
 	}
-	return strData;
+    return strData;
 }
 
 bool oneTouchSearch(const wchar_t* search_engine_url) {
@@ -38,8 +45,8 @@ bool oneTouchSearch(const wchar_t* search_engine_url) {
 
 	// Prepare the keys
 	const int key_count = 4;
-	INPUT input[key_count] = {{INPUT_KEYBOARD}, {INPUT_KEYBOARD}, {INPUT_KEYBOARD}, {INPUT_KEYBOARD}};
-	const WORD inputKey[2] = {VK_CONTROL, VK_INSERT};
+	INPUT input[key_count] = { {INPUT_KEYBOARD}, {INPUT_KEYBOARD}, {INPUT_KEYBOARD}, {INPUT_KEYBOARD} };
+	const WORD inputKey[2] = { VK_CONTROL, VK_INSERT };
 
 	// Prepare ALT release
 	input[0].ki.wVk = VK_MENU;
@@ -50,13 +57,10 @@ bool oneTouchSearch(const wchar_t* search_engine_url) {
 	// Prepare CTRL+INS
 	input[0].ki.wVk = input[2].ki.wVk = inputKey[0];
 	input[1].ki.wVk = input[3].ki.wVk = inputKey[1];
-	input[2].ki.dwFlags = (input[3].ki.dwFlags |= KEYEVENTF_KEYUP);	
+	input[2].ki.dwFlags = (input[3].ki.dwFlags |= KEYEVENTF_KEYUP);
 
 	// Send the keys
-	if (SendInput(key_count, (LPINPUT) input, sizeof(INPUT))) {
-
-		// Wait 200 ms
-		Sleep(200);
+	if (SendInput(key_count, (LPINPUT)input, sizeof(INPUT))) {
 
 		// Get the current clipboard text in Unicode format
 		CStringW clipText = getClipboard();
@@ -81,7 +85,8 @@ bool oneTouchSearch(const wchar_t* search_engine_url) {
 			cbbackup.Restore();
 			return TRUE;
 
-		} else {
+		}
+		else {
 
 			// Restore the clipboard
 			cbbackup.Restore();
@@ -89,7 +94,8 @@ bool oneTouchSearch(const wchar_t* search_engine_url) {
 			// No text to search
 			return FALSE;
 		}
-	} else {
+	}
+	else {
 
 		// Unable to send keys to copy the text
 		return FALSE;

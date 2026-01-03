@@ -9,27 +9,11 @@
 #pragma once
 
 #include "stdafx.h"
-#include <atlstr.h>
-
-// For ANSI, set default codepage to Hebrew.
-// This is used for conversion into UTF-8 from ANSI (Through Unicode)
-// You can change this to your codepage.
-#define URLENCODE_DEFAULT_ANSI_CODEPAGE 1255
 
 class CURLEncode
 {
-private:
-	static LPCTSTR m_lpszUnsafeString;
-	static int m_iUnsafeLen;
-	static LPCTSTR m_lpszReservedString;
-	static int m_iReservedLen;
-
-	CString toHex(BYTE val);
-	//WORD toUTF8(TCHAR tc);
-	//TCHAR fromUTF8(WORD w);
 
 public:
-	//CString Encode(CString strURL, BOOL bEncodeReserved=FALSE);
-	//CString Decode(CString strURL);
 	CString URLEncode(const CString& str);
+
 };
