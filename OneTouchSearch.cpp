@@ -134,7 +134,28 @@ bool CreateMainHiddenWnd() {
 	return true;
 }
 
-// Main entry point
+// ヘルパー関数
+void saveURL(const wchar_t* regValue, const std::wstring& url) {
+	HKEY hKey;
+	if (RegCreateKeyEx(HKEY_CURRENT_USER, L"Software\\OneTouchSearch", 0, NULL, 0,
+		KEY_ALL_ACCESS, NULL, &hKey, NULL) == ERROR_SUCCESS) {
+		RegSetValueEx(hKey, regValue, 0, REG_SZ,
+			(LPBYTE)url.c_str(), (url.size() + 1) * sizeof(wchar_t));
+		RegCloseKey(hKey);
+	}
+}
+
+void saveHotkey(const wchar_t* regValue, UINT modifiers, UINT key) {
+	DWORD hkValue = MAKELONG(key, modifiers);
+	HKEY hKey;
+	if (RegCreateKeyEx(HKEY_CURRENT_USER, L"Software\\OneTouchSearch", 0, NULL, 0,
+		KEY_ALL_ACCESS, NULL, &hKey, NULL) == ERROR_SUCCESS) {
+		RegSetValueEx(hKey, regValue, 0, REG_DWORD, (BYTE*)&hkValue, sizeof(hkValue));
+		RegCloseKey(hKey);
+	}
+}
+
+	// Main entry point
 int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
 {
 	// Create a message-only window to handle the tray icon
@@ -144,101 +165,160 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
 	// Define registry values
 	static const HKEY REG_HK = HKEY_CURRENT_USER;
 	static const wchar_t* OTS_REG_KEY = L"Software\\OneTouchSearch";
-	static const wchar_t* OTS_REG_VALUE_URL = L"SearchEngineURL";
-	static const wchar_t* OTS_REG_VALUE_HOTKEY = L"Hotkey";
-	
-	UINT hkModifiers;
-	UINT hkKey;
-	std::wstring searchEngineURL;
+	static const wchar_t* OTS_REG_VALUE_URL_K = L"SearchEngineURL";  // K用(デフォルト)
+	static const wchar_t* OTS_REG_VALUE_URL_1 = L"SearchEngineURL_1";  // 1用
+	static const wchar_t* OTS_REG_VALUE_URL_2 = L"SearchEngineURL_2";  // 2用
+	static const wchar_t* OTS_REG_VALUE_URL_3 = L"SearchEngineURL_3";  // 3用
+	static const wchar_t* OTS_REG_VALUE_URL_4 = L"SearchEngineURL_4";  // 4用
+	static const wchar_t* OTS_REG_VALUE_HOTKEY_K = L"Hotkey";         // K用(デフォルト)
+	static const wchar_t* OTS_REG_VALUE_HOTKEY_1 = L"Hotkey_1";         // 2用
+	static const wchar_t* OTS_REG_VALUE_HOTKEY_2 = L"Hotkey_2";         // 2用
+	static const wchar_t* OTS_REG_VALUE_HOTKEY_3 = L"Hotkey_3";         // 3用
+	static const wchar_t* OTS_REG_VALUE_HOTKEY_4 = L"Hotkey_4";         // 4用
 
-	// Read search engine URL from the registry
-	searchEngineURL.resize(1023);
-	DWORD searchEngineURL_size = searchEngineURL.size();
-	if (RegGetValue(REG_HK, OTS_REG_KEY, OTS_REG_VALUE_URL, RRF_RT_REG_SZ, NULL, &searchEngineURL[0], &searchEngineURL_size) == ERROR_SUCCESS) {
-		// Check size of the returned string
-		if (searchEngineURL_size > 4) {
-			// Remove null char from string
-			searchEngineURL.resize((searchEngineURL_size / sizeof(wchar_t))-1);
-		} else {
-			// String empty
-			MessageBox(g_hMainWnd, _T("Invalid/empty URL for the search engine, cannot continue."), _T("One Touch Search error"), MB_ICONEXCLAMATION | MB_OK);
-			return -2;
-		}
-	} else {
-		// Default
-		searchEngineURL.assign(_T("http://www.google.com/search?q="));
+	std::wstring searchEngineURL_K, searchEngineURL_1, searchEngineURL_2, searchEngineURL_3, searchEngineURL_4;
+	UINT hkModifiers_K, hkKey_K, hkModifiers_1, hkKey_1, hkModifiers_2, hkKey_2, hkModifiers_3, hkKey_3, hkModifiers_4, hkKey_4;
 
-		// Save setting to registry for next time
-		HKEY hSaveKey;
-		if (RegCreateKeyEx(REG_HK, OTS_REG_KEY, 0, NULL, 0, KEY_ALL_ACCESS, NULL, &hSaveKey, NULL) == ERROR_SUCCESS) {
-			RegSetValueEx(hSaveKey, OTS_REG_VALUE_URL, 0, REG_SZ, (LPBYTE)(searchEngineURL.c_str()), (searchEngineURL.size() + 1) * sizeof(wchar_t));
+	// Read search engine URLs from registry
+	auto readURL = [&](const wchar_t* regValue, std::wstring& url) {
+		url.resize(1023);
+		DWORD size = url.size() * sizeof(wchar_t);
+		if (RegGetValue(REG_HK, OTS_REG_KEY, regValue, RRF_RT_REG_SZ, NULL, &url[0], &size) == ERROR_SUCCESS) {
+			url.resize(size / sizeof(wchar_t) - 1);
+			return true;
 		}
-		RegCloseKey(hSaveKey);
+		return false;
+	};
+
+	// Kホットキー設定読み込み
+	if (!readURL(OTS_REG_VALUE_URL_K, searchEngineURL_K)) {
+		searchEngineURL_K = L"https://www.google.com/search?q=";  // デフォルトGoogle検索
+		saveURL(OTS_REG_VALUE_URL_K, searchEngineURL_K);
 	}
 
-	// Read the hotkey from the registry
-	DWORD hotkey_data;
-	DWORD hotkey_data_size = sizeof(hotkey_data);
-	if (RegGetValue(REG_HK, OTS_REG_KEY, OTS_REG_VALUE_HOTKEY, RRF_RT_REG_DWORD, NULL, &hotkey_data, &hotkey_data_size) == ERROR_SUCCESS) {
-		// Registry value exists
-		hkModifiers = HIWORD(hotkey_data);
-		hkKey = LOWORD(hotkey_data);
-	} else {
-		// Default
-		hkModifiers = MOD_CONTROL | MOD_ALT | MOD_SHIFT; // CTRL+ALT+SHIFT (high word)
-		hkKey = 0x4B; // VK_KEY_K (low word)
-
-		// Save setting to registry for next time
-		DWORD hkValue = MAKELONG(hkKey, hkModifiers);
-		HKEY hSaveKey;
-		if (RegCreateKeyEx(REG_HK, OTS_REG_KEY, 0, NULL, 0, KEY_ALL_ACCESS, NULL, &hSaveKey, NULL) == ERROR_SUCCESS) {
-			RegSetValueEx(hSaveKey, OTS_REG_VALUE_HOTKEY, 0, REG_DWORD, (const BYTE*)&hkValue, sizeof(hkValue));
-		}
-		RegCloseKey(hSaveKey);
+	// 1ホットキー設定読み込み
+	if (!readURL(OTS_REG_VALUE_URL_1, searchEngineURL_1)) {
+		searchEngineURL_1 = L"http://www.google.com/search?num=50&lr=lang_ja&q=";  // 日本語版Google検索(日本語のみ)
+		saveURL(OTS_REG_VALUE_URL_1, searchEngineURL_1);
 	}
 
-	// Check that at least a modifier is present
-	if (((hkModifiers & MOD_CONTROL) == MOD_CONTROL) || 
-		((hkModifiers & MOD_WIN) == MOD_WIN)) {
-		// A modifier is present, OK!
+	// 2ホットキー設定読み込み
+	if (!readURL(OTS_REG_VALUE_URL_2, searchEngineURL_2)) {
+		searchEngineURL_2 = L"https://x.com/search?q=";  // Xで検索
+		saveURL(OTS_REG_VALUE_URL_2, searchEngineURL_2);
+	}
 
-		// Register the system-wide hotkey
-		if (RegisterHotKey(NULL, 1, hkModifiers | MOD_NOREPEAT, hkKey)) {
-			
-			// Set the listener for the tray icon
-			g_TrayIconOTS.SetListener(g_TrayIconOTS_OnMessage);
+	// 3ホットキー設定読み込み
+	if (!readURL(OTS_REG_VALUE_URL_3, searchEngineURL_3)) {
+		searchEngineURL_3 = L"https://ja.wikipedia.org/w/index.php?search=";  // Wikipedia（日本）検索
+		saveURL(OTS_REG_VALUE_URL_3, searchEngineURL_3);
+	}
 
-			// Start the message pump
-			MSG msg;
-			while (GetMessage(&msg, NULL, 0, 0))
-			{
-				if (msg.message == WM_HOTKEY) {
-					// Run One Touch Search code when the hotkey is detected
-					bool success = oneTouchSearch(searchEngineURL.c_str());
+	// 4ホットキー設定読み込み
+	if (!readURL(OTS_REG_VALUE_URL_4, searchEngineURL_4)) {
+		searchEngineURL_4 = L"https://www.amazon.co.jp/s?k=";  // amazon（日本）で検索
+		saveURL(OTS_REG_VALUE_URL_4, searchEngineURL_4);
+	}
 
-					// Check if not successfull
-					if (success != TRUE) {
+	// ホットキー設定読み込み
+	auto readHotkey = [&](const wchar_t* regValue, UINT& modifiers, UINT& key) {
+		DWORD data;
+		DWORD size = sizeof(data);
+		if (RegGetValue(REG_HK, OTS_REG_KEY, regValue, RRF_RT_REG_DWORD, NULL, &data, &size) == ERROR_SUCCESS) {
+			modifiers = HIWORD(data);
+			key = LOWORD(data);
+			return true;
+		}
+		return false;
+	};
 
-						// Display a notification
-						g_TrayIconOTS.ShowBalloonTooltip("One Touch Search", "No selected text found!", CTrayIcon::eTI_Info);
-					}
+	// Kホットキー（デフォルト: CTRL+ALT+SHIFT+K）
+	if (!readHotkey(OTS_REG_VALUE_HOTKEY_K, hkModifiers_K, hkKey_K)) {
+		hkModifiers_K = MOD_CONTROL | MOD_ALT | MOD_SHIFT;
+		hkKey_K = _T('K');
+		saveHotkey(OTS_REG_VALUE_HOTKEY_K, hkModifiers_K, hkKey_K);
+	}
 
-				} else {
-					// Dispatch other messages to the main window
-					TranslateMessage(&msg);
-					DispatchMessage(&msg);
+	// 1ホットキー（デフォルト: CTRL+ALT+SHIFT+1）
+	if (!readHotkey(OTS_REG_VALUE_HOTKEY_1, hkModifiers_1, hkKey_1)) {
+		hkModifiers_1 = MOD_CONTROL | MOD_ALT | MOD_SHIFT;
+		hkKey_1 = _T('1');
+		saveHotkey(OTS_REG_VALUE_HOTKEY_1, hkModifiers_1, hkKey_1);
+	}
+
+	// 2ホットキー（デフォルト: CTRL+ALT+SHIFT+2）
+	if (!readHotkey(OTS_REG_VALUE_HOTKEY_2, hkModifiers_2, hkKey_2)) {
+		hkModifiers_2 = MOD_CONTROL | MOD_ALT | MOD_SHIFT;
+		hkKey_2 = _T('2');
+		saveHotkey(OTS_REG_VALUE_HOTKEY_2, hkModifiers_2, hkKey_2);
+	}
+
+	// 3ホットキー（デフォルト: CTRL+ALT+SHIFT+3）
+	if (!readHotkey(OTS_REG_VALUE_HOTKEY_3, hkModifiers_3, hkKey_3)) {
+		hkModifiers_3 = MOD_CONTROL | MOD_ALT | MOD_SHIFT;
+		hkKey_3 = _T('3');
+		saveHotkey(OTS_REG_VALUE_HOTKEY_3, hkModifiers_3, hkKey_3);
+	}
+
+	// 4ホットキー（デフォルト: CTRL+ALT+SHIFT+4）
+	if (!readHotkey(OTS_REG_VALUE_HOTKEY_4, hkModifiers_4, hkKey_4)) {
+		hkModifiers_4 = MOD_CONTROL | MOD_ALT | MOD_SHIFT;
+		hkKey_4 = _T('4');
+		saveHotkey(OTS_REG_VALUE_HOTKEY_4, hkModifiers_4, hkKey_4);
+	}
+	bool isHotKeyK = RegisterHotKey(NULL, 0, hkModifiers_K | MOD_NOREPEAT, hkKey_K);
+	bool isHotKey1 = RegisterHotKey(NULL, 1, hkModifiers_1 | MOD_NOREPEAT, hkKey_1);
+	bool isHotKey2 = RegisterHotKey(NULL, 2, hkModifiers_2 | MOD_NOREPEAT, hkKey_2);
+	bool isHotKey3 = RegisterHotKey(NULL, 3, hkModifiers_3 | MOD_NOREPEAT, hkKey_3);
+	bool isHotKey4 = RegisterHotKey(NULL, 4, hkModifiers_4 | MOD_NOREPEAT, hkKey_4);
+
+	// ホットキー登録
+	if (!isHotKeyK || !isHotKey1 || !isHotKey2 || !isHotKey3 || !isHotKey4) {
+		MessageBox(g_hMainWnd,
+			_T("One or more hotkeys are already in use.\nPlease change settings in registry."),
+			_T("One Touch Search error"),
+			MB_ICONEXCLAMATION | MB_OK);
+		return -4;
+	}
+
+	// Set the listener for the tray icon
+	g_TrayIconOTS.SetListener(g_TrayIconOTS_OnMessage);
+
+	// Start the message pump
+	MSG msg;
+	while (GetMessage(&msg, NULL, 0, 0)) {
+		if (msg.message == WM_HOTKEY) {
+			bool success = false;
+			const wchar_t* urlToUse = nullptr;
+
+			// ホットキー判定
+			if (msg.wParam == 0) {  // Kホットキー
+				urlToUse = searchEngineURL_K.c_str();
+			}
+			else if (msg.wParam == 1) {  // 1ホットキー
+				urlToUse = searchEngineURL_1.c_str();
+			}
+			else if (msg.wParam == 2) {  // 2ホットキー
+				urlToUse = searchEngineURL_2.c_str();
+			}
+			else if (msg.wParam == 3) {  // 3ホットキー
+				urlToUse = searchEngineURL_3.c_str();
+			}
+			else if (msg.wParam == 4) {  // 4ホットキー
+				urlToUse = searchEngineURL_4.c_str();
+			}
+
+			if (urlToUse) {
+				success = oneTouchSearch(urlToUse);
+				if (!success) {
+					g_TrayIconOTS.ShowBalloonTooltip("One Touch Search","No selected text found!", CTrayIcon::eTI_Info);
 				}
 			}
-			return (int)msg.wParam;
-
-		} else {
-			// Unable to register hotkey (already in use?)
-			MessageBox(g_hMainWnd, _T("The hotkey is already in use, cannot continue."), _T("One Touch Search error"), MB_ICONEXCLAMATION | MB_OK);
-			return -4;
 		}
-	} else {
-		// A modifier is not present
-		MessageBox(g_hMainWnd, _T("No valid modifier (CTRL, WIN, ...) found for the hotkey, cannot continue."), _T("One Touch Search error"), MB_ICONEXCLAMATION | MB_OK);
-		return -3;
+		else {
+			TranslateMessage(&msg);
+			DispatchMessage(&msg);
+		}
 	}
+	return (int)msg.wParam;
 }
