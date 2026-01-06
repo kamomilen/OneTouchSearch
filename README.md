@@ -8,3 +8,12 @@ When it is running and the user presses the default hotkey <kbd>CTRL</kbd>+<kbd>
 
 ## Usage
 1. Press <kbd>CTRL</kbd>+<kbd>ALT</kbd>+<kbd>SHIFT</kbd>+<kbd>K</kbd> on your keyboard, a new browser tab (or instance) should search the highlighted text using Google US.
+2. It now supports <kbd>CTRL</kbd>+<kbd>ALT</kbd>+<kbd>SHIFT</kbd>+<kbd>1-4</kbd> on the keyboard, and can be linked to other search sites, such as Wikipedia, X (Twitter), Amazon, etc.
+
+## Creation history
+You need a Zigsow account.
+https://zigsow.jp/member/118123/diary/125319
+
+## App description (Japanese)
+https://zigsow.jp/item/373475/review/385770
+※The author of the description and the creator of the app are different people.
