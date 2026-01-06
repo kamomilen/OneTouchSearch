@@ -81,8 +81,10 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="ClipboardBackup.h" />
+    <ClInclude Include="CSettingsDialog.h" />
     <ClInclude Include="OneTouchSearch.h" />
     <ClInclude Include="OneTouchSearchAction.h" />
+    <ClInclude Include="Regedit.h" />
     <ClInclude Include="Resource.h" />
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="targetver.h" />
@@ -91,8 +93,10 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="ClipboardBackup.cpp" />
+    <ClCompile Include="CSettingsDialog.cpp" />
     <ClCompile Include="OneTouchSearch.cpp" />
     <ClCompile Include="OneTouchSearchAction.cpp" />
+    <ClCompile Include="Regedit.cpp" />
     <ClCompile Include="stdafx.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Create</PrecompiledHeader>

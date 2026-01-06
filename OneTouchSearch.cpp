@@ -1,6 +1,8 @@
 #include "stdafx.h"
 #include "resource.h"
 #include <vector>
+#include "CSettingsDialog.h"
+#include "Regedit.h"
 #pragma comment(lib,"Version.lib")
 
 // Define handles
@@ -64,6 +66,7 @@ void g_TrayIconOTS_OnMessage(CTrayIcon* pTrayIcon, UINT uMsg)
 				{
 					// Create tray popup menu
 					HMENU menu = CreatePopupMenu();
+					AppendMenu(menu, MF_STRING, 3, _T("Settings"));
 					AppendMenu(menu, MF_STRING, 1, _T("About"));
 					AppendMenu(menu, MF_SEPARATOR, 2, NULL);;
 					AppendMenu(menu, MF_STRING, 2, _T("Exit"));
@@ -84,6 +87,17 @@ void g_TrayIconOTS_OnMessage(CTrayIcon* pTrayIcon, UINT uMsg)
 						}
 						aboutMessage.append(_T("\n\nAllows to open the default web browser and search the currently selected text in any program when pressing CTRL+ALT+SHIFT+K (default hotkey).\n\nBind this shortcut to one of your mouse buttons with Logitech Options and you'll get the old OneTouchSearch feature back! Consider also running this program as Administrator to catch the input in both admin and non-admin apps."));
 						MessageBox(g_hMainWnd, aboutMessage.c_str(), _T("One Touch Search"), MB_ICONINFORMATION | MB_OK);
+					}
+					else if (cmd == 3) {
+						// Settings
+						CSettingsDialog dlg;
+						if (dlg.DoModal() == IDOK) {
+							CStringW appVer;
+							std::wstring aboutMessage;
+							aboutMessage.append(_T("The registry has been set.\n\nplease restart the app."));
+							MessageBox(g_hMainWnd, aboutMessage.c_str(), _T("One Touch Search"), MB_ICONINFORMATION | MB_OK);
+							PostMessage(g_hMainWnd, WM_CLOSE, 0, 0);
+						}
 					}
 				}
 			}
@@ -134,27 +148,6 @@ bool CreateMainHiddenWnd() {
 	return true;
 }
 
-// ヘルパー関数
-void saveURL(const wchar_t* regValue, const std::wstring& url) {
-	HKEY hKey;
-	if (RegCreateKeyEx(HKEY_CURRENT_USER, L"Software\\OneTouchSearch", 0, NULL, 0,
-		KEY_ALL_ACCESS, NULL, &hKey, NULL) == ERROR_SUCCESS) {
-		RegSetValueEx(hKey, regValue, 0, REG_SZ,
-			(LPBYTE)url.c_str(), (url.size() + 1) * sizeof(wchar_t));
-		RegCloseKey(hKey);
-	}
-}
-
-void saveHotkey(const wchar_t* regValue, UINT modifiers, UINT key) {
-	DWORD hkValue = MAKELONG(key, modifiers);
-	HKEY hKey;
-	if (RegCreateKeyEx(HKEY_CURRENT_USER, L"Software\\OneTouchSearch", 0, NULL, 0,
-		KEY_ALL_ACCESS, NULL, &hKey, NULL) == ERROR_SUCCESS) {
-		RegSetValueEx(hKey, regValue, 0, REG_DWORD, (BYTE*)&hkValue, sizeof(hkValue));
-		RegCloseKey(hKey);
-	}
-}
-
 	// Main entry point
 int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
 {
@@ -162,115 +155,109 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
 	if (!CreateMainHiddenWnd())
 		return -1;
 
-	// Define registry values
-	static const HKEY REG_HK = HKEY_CURRENT_USER;
-	static const wchar_t* OTS_REG_KEY = L"Software\\OneTouchSearch";
-	static const wchar_t* OTS_REG_VALUE_URL_K = L"SearchEngineURL";  // K用(デフォルト)
-	static const wchar_t* OTS_REG_VALUE_URL_1 = L"SearchEngineURL_1";  // 1用
-	static const wchar_t* OTS_REG_VALUE_URL_2 = L"SearchEngineURL_2";  // 2用
-	static const wchar_t* OTS_REG_VALUE_URL_3 = L"SearchEngineURL_3";  // 3用
-	static const wchar_t* OTS_REG_VALUE_URL_4 = L"SearchEngineURL_4";  // 4用
-	static const wchar_t* OTS_REG_VALUE_HOTKEY_K = L"Hotkey";         // K用(デフォルト)
-	static const wchar_t* OTS_REG_VALUE_HOTKEY_1 = L"Hotkey_1";         // 2用
-	static const wchar_t* OTS_REG_VALUE_HOTKEY_2 = L"Hotkey_2";         // 2用
-	static const wchar_t* OTS_REG_VALUE_HOTKEY_3 = L"Hotkey_3";         // 3用
-	static const wchar_t* OTS_REG_VALUE_HOTKEY_4 = L"Hotkey_4";         // 4用
+	Regedit regedit;
 
+	bool enable_K, enable_1, enable_2, enable_3, enable_4;
 	std::wstring searchEngineURL_K, searchEngineURL_1, searchEngineURL_2, searchEngineURL_3, searchEngineURL_4;
 	UINT hkModifiers_K, hkKey_K, hkModifiers_1, hkKey_1, hkModifiers_2, hkKey_2, hkModifiers_3, hkKey_3, hkModifiers_4, hkKey_4;
 
-	// Read search engine URLs from registry
-	auto readURL = [&](const wchar_t* regValue, std::wstring& url) {
-		url.resize(1023);
-		DWORD size = url.size() * sizeof(wchar_t);
-		if (RegGetValue(REG_HK, OTS_REG_KEY, regValue, RRF_RT_REG_SZ, NULL, &url[0], &size) == ERROR_SUCCESS) {
-			url.resize(size / sizeof(wchar_t) - 1);
-			return true;
-		}
-		return false;
-	};
+	// Kホットキー(Enable)
+	if (!regedit.readEnable(OTS_REG_ENABLE_K, enable_K)) {
+		enable_K = true;
+		regedit.saveEnable(OTS_REG_ENABLE_K, enable_K);
+	}
+	// 1ホットキー(Enable) Option
+	if (!regedit.readEnable(OTS_REG_ENABLE_1, enable_1)) {
+		enable_1 = false;
+		regedit.saveEnable(OTS_REG_ENABLE_1, enable_1);
+	}
+	// 2ホットキー(Enable) Option
+	if (!regedit.readEnable(OTS_REG_ENABLE_2, enable_2)) {
+		enable_2 = false;
+		regedit.saveEnable(OTS_REG_ENABLE_2, enable_2);
+	}
+	// 3ホットキー(Enable) Option
+	if (!regedit.readEnable(OTS_REG_ENABLE_3, enable_3)) {
+		enable_3 = false;
+		regedit.saveEnable(OTS_REG_ENABLE_3, enable_3);
+	}
+	// 4ホットキー(Enable) Option
+	if (!regedit.readEnable(OTS_REG_ENABLE_4, enable_4)) {
+		enable_4 = false;
+		regedit.saveEnable(OTS_REG_ENABLE_4, enable_4);
+	}
 
-	// Kホットキー設定読み込み
-	if (!readURL(OTS_REG_VALUE_URL_K, searchEngineURL_K)) {
+	// Kホットキー設定読み込み(URL)
+	if (!regedit.readURL(OTS_REG_VALUE_URL_K, searchEngineURL_K)) {
 		searchEngineURL_K = L"https://www.google.com/search?q=";  // デフォルトGoogle検索
-		saveURL(OTS_REG_VALUE_URL_K, searchEngineURL_K);
+		regedit.saveURL(OTS_REG_VALUE_URL_K, searchEngineURL_K);
 	}
 
-	// 1ホットキー設定読み込み
-	if (!readURL(OTS_REG_VALUE_URL_1, searchEngineURL_1)) {
+	// 1ホットキー設定読み込み(URL)
+	if (!regedit.readURL(OTS_REG_VALUE_URL_1, searchEngineURL_1)) {
 		searchEngineURL_1 = L"http://www.google.com/search?num=50&lr=lang_ja&q=";  // 日本語版Google検索(日本語のみ)
-		saveURL(OTS_REG_VALUE_URL_1, searchEngineURL_1);
+		regedit.saveURL(OTS_REG_VALUE_URL_1, searchEngineURL_1);
 	}
 
-	// 2ホットキー設定読み込み
-	if (!readURL(OTS_REG_VALUE_URL_2, searchEngineURL_2)) {
+	// 2ホットキー設定読み込み(URL)
+	if (!regedit.readURL(OTS_REG_VALUE_URL_2, searchEngineURL_2)) {
 		searchEngineURL_2 = L"https://x.com/search?q=";  // Xで検索
-		saveURL(OTS_REG_VALUE_URL_2, searchEngineURL_2);
+		regedit.saveURL(OTS_REG_VALUE_URL_2, searchEngineURL_2);
 	}
 
-	// 3ホットキー設定読み込み
-	if (!readURL(OTS_REG_VALUE_URL_3, searchEngineURL_3)) {
+	// 3ホットキー設定読み込み(URL)
+	if (!regedit.readURL(OTS_REG_VALUE_URL_3, searchEngineURL_3)) {
 		searchEngineURL_3 = L"https://ja.wikipedia.org/w/index.php?search=";  // Wikipedia（日本）検索
-		saveURL(OTS_REG_VALUE_URL_3, searchEngineURL_3);
+		regedit.saveURL(OTS_REG_VALUE_URL_3, searchEngineURL_3);
 	}
 
-	// 4ホットキー設定読み込み
-	if (!readURL(OTS_REG_VALUE_URL_4, searchEngineURL_4)) {
+	// 4ホットキー設定読み込み(URL)
+	if (!regedit.readURL(OTS_REG_VALUE_URL_4, searchEngineURL_4)) {
 		searchEngineURL_4 = L"https://www.amazon.co.jp/s?k=";  // amazon（日本）で検索
-		saveURL(OTS_REG_VALUE_URL_4, searchEngineURL_4);
+		regedit.saveURL(OTS_REG_VALUE_URL_4, searchEngineURL_4);
 	}
-
-	// ホットキー設定読み込み
-	auto readHotkey = [&](const wchar_t* regValue, UINT& modifiers, UINT& key) {
-		DWORD data;
-		DWORD size = sizeof(data);
-		if (RegGetValue(REG_HK, OTS_REG_KEY, regValue, RRF_RT_REG_DWORD, NULL, &data, &size) == ERROR_SUCCESS) {
-			modifiers = HIWORD(data);
-			key = LOWORD(data);
-			return true;
-		}
-		return false;
-	};
 
 	// Kホットキー（デフォルト: CTRL+ALT+SHIFT+K）
-	if (!readHotkey(OTS_REG_VALUE_HOTKEY_K, hkModifiers_K, hkKey_K)) {
+	if (!regedit.readHotkey(OTS_REG_VALUE_HOTKEY_K, hkModifiers_K, hkKey_K)) {
 		hkModifiers_K = MOD_CONTROL | MOD_ALT | MOD_SHIFT;
 		hkKey_K = _T('K');
-		saveHotkey(OTS_REG_VALUE_HOTKEY_K, hkModifiers_K, hkKey_K);
+		regedit.saveHotkey(OTS_REG_VALUE_HOTKEY_K, hkModifiers_K, hkKey_K);
 	}
 
 	// 1ホットキー（デフォルト: CTRL+ALT+SHIFT+1）
-	if (!readHotkey(OTS_REG_VALUE_HOTKEY_1, hkModifiers_1, hkKey_1)) {
+	if (!regedit.readHotkey(OTS_REG_VALUE_HOTKEY_1, hkModifiers_1, hkKey_1)) {
 		hkModifiers_1 = MOD_CONTROL | MOD_ALT | MOD_SHIFT;
 		hkKey_1 = _T('1');
-		saveHotkey(OTS_REG_VALUE_HOTKEY_1, hkModifiers_1, hkKey_1);
+		regedit.saveHotkey(OTS_REG_VALUE_HOTKEY_1, hkModifiers_1, hkKey_1);
 	}
 
 	// 2ホットキー（デフォルト: CTRL+ALT+SHIFT+2）
-	if (!readHotkey(OTS_REG_VALUE_HOTKEY_2, hkModifiers_2, hkKey_2)) {
+	if (!regedit.readHotkey(OTS_REG_VALUE_HOTKEY_2, hkModifiers_2, hkKey_2)) {
 		hkModifiers_2 = MOD_CONTROL | MOD_ALT | MOD_SHIFT;
 		hkKey_2 = _T('2');
-		saveHotkey(OTS_REG_VALUE_HOTKEY_2, hkModifiers_2, hkKey_2);
+		regedit.saveHotkey(OTS_REG_VALUE_HOTKEY_2, hkModifiers_2, hkKey_2);
 	}
 
 	// 3ホットキー（デフォルト: CTRL+ALT+SHIFT+3）
-	if (!readHotkey(OTS_REG_VALUE_HOTKEY_3, hkModifiers_3, hkKey_3)) {
+	if (!regedit.readHotkey(OTS_REG_VALUE_HOTKEY_3, hkModifiers_3, hkKey_3)) {
 		hkModifiers_3 = MOD_CONTROL | MOD_ALT | MOD_SHIFT;
 		hkKey_3 = _T('3');
-		saveHotkey(OTS_REG_VALUE_HOTKEY_3, hkModifiers_3, hkKey_3);
+		regedit.saveHotkey(OTS_REG_VALUE_HOTKEY_3, hkModifiers_3, hkKey_3);
 	}
 
 	// 4ホットキー（デフォルト: CTRL+ALT+SHIFT+4）
-	if (!readHotkey(OTS_REG_VALUE_HOTKEY_4, hkModifiers_4, hkKey_4)) {
+	if (!regedit.readHotkey(OTS_REG_VALUE_HOTKEY_4, hkModifiers_4, hkKey_4)) {
 		hkModifiers_4 = MOD_CONTROL | MOD_ALT | MOD_SHIFT;
 		hkKey_4 = _T('4');
-		saveHotkey(OTS_REG_VALUE_HOTKEY_4, hkModifiers_4, hkKey_4);
+		regedit.saveHotkey(OTS_REG_VALUE_HOTKEY_4, hkModifiers_4, hkKey_4);
 	}
-	bool isHotKeyK = RegisterHotKey(NULL, 0, hkModifiers_K | MOD_NOREPEAT, hkKey_K);
-	bool isHotKey1 = RegisterHotKey(NULL, 1, hkModifiers_1 | MOD_NOREPEAT, hkKey_1);
-	bool isHotKey2 = RegisterHotKey(NULL, 2, hkModifiers_2 | MOD_NOREPEAT, hkKey_2);
-	bool isHotKey3 = RegisterHotKey(NULL, 3, hkModifiers_3 | MOD_NOREPEAT, hkKey_3);
-	bool isHotKey4 = RegisterHotKey(NULL, 4, hkModifiers_4 | MOD_NOREPEAT, hkKey_4);
+
+	// キー割当
+	bool isHotKeyK = enable_K ? RegisterHotKey(NULL, 0, hkModifiers_K | MOD_NOREPEAT, hkKey_K) : TRUE;
+	bool isHotKey1 = enable_1 ? RegisterHotKey(NULL, 1, hkModifiers_1 | MOD_NOREPEAT, hkKey_1) : TRUE;
+	bool isHotKey2 = enable_2 ? RegisterHotKey(NULL, 2, hkModifiers_2 | MOD_NOREPEAT, hkKey_2) : TRUE;
+	bool isHotKey3 = enable_3 ? RegisterHotKey(NULL, 3, hkModifiers_3 | MOD_NOREPEAT, hkKey_3) : TRUE;
+	bool isHotKey4 = enable_4 ? RegisterHotKey(NULL, 4, hkModifiers_4 | MOD_NOREPEAT, hkKey_4) : TRUE;
 
 	// ホットキー登録
 	if (!isHotKeyK || !isHotKey1 || !isHotKey2 || !isHotKey3 || !isHotKey4) {
